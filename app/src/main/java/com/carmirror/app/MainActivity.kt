@@ -23,24 +23,12 @@ class MainActivity : Activity() {
         setContentView(ScrollView(this).apply { addView(root) })
         MirrorHub.listeners.add(listener)
         // Self-enable accessibility if WRITE_SECURE_SETTINGS was granted via adb
-        enableAccessibilityIfPossible()
+        A11yEnabler.ensure(this)
     }
     override fun onResume() { super.onResume(); build() }
     override fun onDestroy() { MirrorHub.listeners.remove(listener); super.onDestroy() }
 
-    private fun a11yOn(): Boolean {
-        val s = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: return false
-        return s.contains("$packageName/${MirrorAccessibilityService::class.java.name}")
-    }
-
-    private fun enableAccessibilityIfPossible() {
-        if (a11yOn() || checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS) != PackageManager.PERMISSION_GRANTED) return
-        val cn = ComponentName(this, MirrorAccessibilityService::class.java).flattenToString()
-        val cur = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
-        Settings.Secure.putString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
-            if (cur.isNullOrEmpty()) cn else "$cur:$cn")
-        Settings.Secure.putInt(contentResolver, Settings.Secure.ACCESSIBILITY_ENABLED, 1)
-    }
+    private fun a11yOn() = A11yEnabler.isEnabled(this)
 
     private fun row(title: String, ok: Boolean, onTap: () -> Unit) {
         val t = TextView(this).apply {

@@ -21,6 +21,7 @@ class CarMirrorService : CarAppService() {
 class CarMirrorSession : Session() {
     private val main = Handler(Looper.getMainLooper())
     private var scrollX = 0f; private var scrollY = 0f
+    @Volatile private var lastTouch = 0L
     private val flush = Runnable {
         val svc = MirrorAccessibilityService.instance
         val cx = MirrorHub.carW / 2f; val cy = MirrorHub.carH / 2f
@@ -31,12 +32,22 @@ class CarMirrorSession : Session() {
 
     private val callback = object : SurfaceCallback {
         override fun onSurfaceAvailable(c: SurfaceContainer) {
+            android.util.Log.i("CarMirror", "surface available ${c.width}x${c.height}")
             val s: Surface? = c.surface
             MirrorHub.setCarSurface(s, c.width, c.height)
         }
         override fun onSurfaceDestroyed(c: SurfaceContainer) { MirrorHub.setCarSurface(null, 0, 0) }
-        override fun onClick(x: Float, y: Float) { MirrorAccessibilityService.instance?.tapCar(x, y) }
+        override fun onClick(x: Float, y: Float) {
+            android.util.Log.i("CarMirror", "surface onClick $x,$y a11y=${MirrorAccessibilityService.instance != null} r=${MirrorHub.renderer != null}")
+            val now = System.currentTimeMillis()
+            val idle = now - lastTouch > 3500
+            lastTouch = now
+            // Strip is hidden after idle; the revealing tap must not leak to the phone.
+            if (idle && x > MirrorHub.carW * 0.68f && y < MirrorHub.carH * 0.2f) return
+            MirrorAccessibilityService.instance?.tapCar(x, y)
+        }
         override fun onScroll(dx: Float, dy: Float) {
+            android.util.Log.i("CarMirror", "surface onScroll $dx,$dy")
             scrollX += dx; scrollY += dy
             main.removeCallbacks(flush); main.postDelayed(flush, 90)
         }
@@ -111,7 +122,7 @@ class MenuScreen(ctx: CarContext) : Screen(ctx) {
 class MirrorScreen(ctx: CarContext) : Screen(ctx) {
     override fun onGetTemplate(): Template {
         fun act(res: Int, f: () -> Unit) = Action.Builder().setIcon(icon(carContext, res))
-            .setOnClickListener { f() }.build()
+            .setOnClickListener { android.util.Log.i("CarMirror", "action click"); f() }.build()
         val strip = ActionStrip.Builder()
             .addAction(act(R.drawable.ic_menu) { screenManager.pop() })
             .addAction(act(R.drawable.ic_back) { MirrorAccessibilityService.instance?.back() })

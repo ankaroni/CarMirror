@@ -17,7 +17,10 @@ class MirrorAccessibilityService : AccessibilityService() {
     private val main = Handler(Looper.getMainLooper())
     private var overlay: View? = null
 
-    override fun onServiceConnected() { instance = this; main.post(poll) }
+    override fun onServiceConnected() {
+        instance = this; main.post(poll)
+        if (MirrorHub.active) setKeepLandscape(true)
+    }
     override fun onDestroy() { instance = null; super.onDestroy() }
     override fun onInterrupt() {}
     override fun onAccessibilityEvent(e: AccessibilityEvent?) { tryConsent() }
@@ -73,8 +76,9 @@ class MirrorAccessibilityService : AccessibilityService() {
 
     private fun gesture(x1: Float, y1: Float, x2: Float, y2: Float, dur: Long) {
         val path = Path().apply { moveTo(x1, y1); if (x1 != x2 || y1 != y2) lineTo(x2, y2) }
-        dispatchGesture(GestureDescription.Builder()
+        val ok = dispatchGesture(GestureDescription.Builder()
             .addStroke(GestureDescription.StrokeDescription(path, 0, dur)).build(), null, null)
+        android.util.Log.i("CarMirror", "gesture $x1,$y1 -> $x2,$y2 ok=$ok")
     }
 
     fun back() = performGlobalAction(GLOBAL_ACTION_BACK)

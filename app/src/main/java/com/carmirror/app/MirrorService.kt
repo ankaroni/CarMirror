@@ -36,6 +36,7 @@ class MirrorService : Service() {
     }
 
     private fun begin(code: Int, data: Intent) {
+        A11yEnabler.ensure(this)
         teardown()
         val mpm = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
         val p = mpm.getMediaProjection(code, data)
