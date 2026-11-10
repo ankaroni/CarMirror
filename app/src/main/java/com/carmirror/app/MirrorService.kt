@@ -18,6 +18,16 @@ class MirrorService : Service() {
     private var projection: MediaProjection? = null
     private var vd: VirtualDisplay? = null
     private val main = Handler(Looper.getMainLooper())
+    private var nativeW = 2340; private var nativeH = 1080; private var dpi = 420
+
+    /** Smallest capture size that still covers the car surface 1:1 (fill or fit), capped at native. */
+    private fun targetSize(carW: Int, carH: Int): Pair<Int, Int> {
+        val at = nativeW.toFloat() / nativeH
+        var h = if (carW > 0 && carH > 0) maxOf(carH.toFloat(), carW / at).toInt() else 1080
+        h = h.coerceIn(minOf(886, nativeH), nativeH)
+        val w = (h * at).toInt()
+        return (w and 1.inv()) to (h and 1.inv())
+    }
 
     override fun onBind(i: Intent?): IBinder? = null
 
@@ -48,18 +58,27 @@ class MirrorService : Service() {
             }
         }, main)
 
-        // Landscape native size, capped at 1920 wide
+        // Landscape native size; capture resolution follows the car screen (sharp, not oversized)
         val dm = DisplayMetrics()
         (getSystemService(Context.DISPLAY_SERVICE) as DisplayManager).getDisplay(0).getRealMetrics(dm)
-        var w = maxOf(dm.widthPixels, dm.heightPixels); var h = minOf(dm.widthPixels, dm.heightPixels)
-        if (w > 1920) { h = h * 1920 / w; w = 1920 }
-        w = w and 1.inv(); h = h and 1.inv()
+        nativeW = maxOf(dm.widthPixels, dm.heightPixels); nativeH = minOf(dm.widthPixels, dm.heightPixels)
+        dpi = dm.densityDpi
+        val (w, h) = targetSize(MirrorHub.carW, MirrorHub.carH)
 
         val r = MirrorRenderer(w, h, Prefs(this).fill)
         val surface = r.start()
         MirrorHub.renderer = r
-        vd = p.createVirtualDisplay("CarMirror", w, h, dm.densityDpi,
+        vd = p.createVirtualDisplay("CarMirror", w, h, dpi,
             DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, surface, null, null)
+        MirrorHub.onCarSize = { cw, ch ->
+            main.post {
+                val (nw, nh) = targetSize(cw, ch)
+                val rr = MirrorHub.renderer
+                if (rr != null && (Math.abs(nw - rr.vdW) > 64 || Math.abs(nh - rr.vdH) > 64)) {
+                    rr.setInputSize(nw, nh); vd?.resize(nw, nh, dpi)
+                }
+            }
+        }
         MirrorHub.carSurface?.let { r.setOutput(it, MirrorHub.carW, MirrorHub.carH) }
 
         MirrorHub.active = true
@@ -74,6 +93,7 @@ class MirrorService : Service() {
     }
 
     private fun teardown() {
+        MirrorHub.onCarSize = null
         vd?.release(); vd = null
         MirrorHub.renderer?.let { it.release() }
         MirrorHub.renderer = null

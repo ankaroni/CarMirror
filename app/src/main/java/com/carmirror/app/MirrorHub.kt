@@ -17,6 +17,8 @@ object MirrorHub {
     @Volatile var carW = 0
     @Volatile var carH = 0
 
+    @Volatile var onCarSize: ((Int, Int) -> Unit)? = null
+
     private val main = Handler(Looper.getMainLooper())
     val listeners = CopyOnWriteArrayList<() -> Unit>()
 
@@ -25,6 +27,6 @@ object MirrorHub {
     fun setCarSurface(s: Surface?, w: Int, h: Int) {
         carSurface = s; carW = w; carH = h
         val r = renderer
-        if (s != null) r?.setOutput(s, w, h) else r?.clearOutput()
+        if (s != null) { r?.setOutput(s, w, h); onCarSize?.invoke(w, h) } else r?.clearOutput()
     }
 }

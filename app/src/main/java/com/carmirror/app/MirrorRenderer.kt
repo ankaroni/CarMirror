@@ -14,7 +14,15 @@ import java.util.concurrent.TimeUnit
  * Receives the virtual display frames in a SurfaceTexture and draws them
  * onto the car surface (center-crop = no black bars, or letterbox fit).
  */
-class MirrorRenderer(val vdW: Int, val vdH: Int, @Volatile var fill: Boolean) {
+class MirrorRenderer(vdW0: Int, vdH0: Int, @Volatile var fill: Boolean) {
+    @Volatile var vdW = vdW0; private set
+    @Volatile var vdH = vdH0; private set
+
+    fun setInputSize(w: Int, h: Int) {
+        vdW = w; vdH = h
+        handler.post { st?.setDefaultBufferSize(w, h) }
+    }
+
     private val thread = HandlerThread("mirror-gl").apply { start() }
     private val handler = Handler(thread.looper)
 
