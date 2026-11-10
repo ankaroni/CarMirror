@@ -58,8 +58,11 @@ class CarMirrorSession : Session() {
             override fun onCreate(owner: LifecycleOwner) {
                 connected = true
                 carContext.getCarService(AppManager::class.java).setSurfaceCallback(callback)
-                if (!MirrorHub.active && Prefs(carContext).autoStart)
+                val pr = Prefs(carContext)
+                if (pr.openLast) pr.lastApp?.let { MirrorHub.pendingPkg = it }
+                if (!MirrorHub.active && pr.autoStart)
                     ProjectionRequester.request(carContext.applicationContext)
+                else if (MirrorHub.active && pr.openLast) pr.lastApp?.let { AppLauncher.launch(carContext, it) }
             }
             override fun onDestroy(owner: LifecycleOwner) { connected = false; MirrorHub.setCarSurface(null, 0, 0) }
         })
@@ -113,6 +116,7 @@ class MenuScreen(ctx: CarContext) : Screen(ctx) {
     }
 
     private fun open(pkg: String) {
+        Prefs(carContext).lastApp = pkg
         if (MirrorHub.active) AppLauncher.launch(carContext, pkg)
         else { MirrorHub.pendingPkg = pkg; ProjectionRequester.request(carContext.applicationContext) }
         screenManager.push(MirrorScreen(carContext))
@@ -127,6 +131,7 @@ class MirrorScreen(ctx: CarContext) : Screen(ctx) {
             .addAction(act(R.drawable.ic_menu) { screenManager.pop() })
             .addAction(act(R.drawable.ic_back) { MirrorAccessibilityService.instance?.back() })
             .addAction(act(R.drawable.ic_home) { MirrorAccessibilityService.instance?.home() })
+            .addAction(act(R.drawable.ic_recents) { MirrorAccessibilityService.instance?.recents() })
             .build()
         val map = ActionStrip.Builder().addAction(Action.PAN).build()
         return NavigationTemplate.Builder().setActionStrip(strip).setMapActionStrip(map)

@@ -39,6 +39,9 @@ class MirrorRenderer(vdW0: Int, vdH0: Int, @Volatile var fill: Boolean) {
     @Volatile private var outW = 0
     @Volatile private var outH = 0
     private var hasFrame = false
+    @Volatile var fps30 = true
+    private var lastDraw = 0L
+    private val retry = Runnable { render(false) }
 
     private val quad = floatArrayOf(-1f, -1f, 0f, 0f, 1f, -1f, 1f, 0f, -1f, 1f, 0f, 1f, 1f, 1f, 1f, 1f)
     private val quadBuf = ByteBuffer.allocateDirect(quad.size * 4).order(ByteOrder.nativeOrder())
@@ -151,6 +154,13 @@ class MirrorRenderer(vdW0: Int, vdH0: Int, @Volatile var fill: Boolean) {
         EGL14.eglMakeCurrent(dpy, target, target, ctx)
         if (newFrame) { st?.updateTexImage(); st?.getTransformMatrix(tm); hasFrame = true }
         if (win == EGL14.EGL_NO_SURFACE || !hasFrame) return
+        if (fps30 && newFrame) {
+            val now = android.os.SystemClock.uptimeMillis()
+            if (now - lastDraw < 30) {           // drop frame, but make sure the last one still gets drawn
+                handler.removeCallbacks(retry); handler.postDelayed(retry, 34); return
+            }
+        }
+        lastDraw = android.os.SystemClock.uptimeMillis()
         GLES20.glClearColor(0f, 0f, 0f, 1f); GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
         val ac = outW.toFloat() / outH; val at = vdW.toFloat() / vdH
         if (!fill) {

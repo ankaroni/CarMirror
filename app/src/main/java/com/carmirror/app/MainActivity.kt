@@ -25,7 +25,7 @@ class MainActivity : Activity() {
         // Self-enable accessibility if WRITE_SECURE_SETTINGS was granted via adb
         A11yEnabler.ensure(this)
     }
-    override fun onResume() { super.onResume(); build() }
+    override fun onResume() { super.onResume(); if (!MirrorHub.active) MirrorAccessibilityService.instance?.applyDim(false); build() }
     override fun onDestroy() { MirrorHub.listeners.remove(listener); super.onDestroy() }
 
     private fun a11yOn() = A11yEnabler.isEnabled(this)
@@ -62,6 +62,24 @@ class MainActivity : Activity() {
         val fl = Switch(this).apply { text = "Siyah kenarsız doldur (kırpar)"; isChecked = prefs.fill
             setPadding(24, 24, 24, 24); setOnCheckedChangeListener { _, c -> prefs.fill = c; MirrorHub.renderer?.fill = c; MirrorHub.renderer?.redraw() } }
         root.addView(sw); root.addView(fl)
+        root.addView(Switch(this).apply { text = "Yansıtırken telefon ekranını karart (ısınmayı azaltır)"; isChecked = prefs.dim
+            setPadding(24, 24, 24, 24); setOnCheckedChangeListener { _, c -> prefs.dim = c; if (MirrorHub.active) MirrorAccessibilityService.instance?.setKeepLandscape(true) } })
+        root.addView(TextView(this).apply { text = "Karartma parlaklığı: %" + prefs.dimLevel; setPadding(24, 8, 24, 0) }.also { lbl ->
+            root.addView(lbl)
+            root.addView(SeekBar(this).apply { max = 50; progress = prefs.dimLevel
+                setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(s: SeekBar?, p: Int, u: Boolean) { prefs.dimLevel = p; lbl.text = "Karartma parlaklığı: %$p" }
+                    override fun onStartTrackingTouch(s: SeekBar?) {}
+                    override fun onStopTrackingTouch(s: SeekBar?) { if (MirrorHub.active) MirrorAccessibilityService.instance?.setKeepLandscape(true) }
+                }) }) })
+        root.addView(Switch(this).apply { text = "Isı tasarrufu: 30 fps"; isChecked = prefs.fps30
+            setPadding(24, 24, 24, 24); setOnCheckedChangeListener { _, c -> prefs.fps30 = c; MirrorHub.renderer?.fps30 = c } })
+        root.addView(Switch(this).apply { text = "Bağlanınca son kullanılan uygulamayı aç"; isChecked = prefs.openLast
+            setPadding(24, 24, 24, 24); setOnCheckedChangeListener { _, c -> prefs.openLast = c } })
+        val wsOk = android.provider.Settings.System.canWrite(this)
+        row("Sistem ayarlarını değiştirme (tam karartma): " + if (wsOk) "AÇIK" else "KAPALI", wsOk) {
+            startActivity(Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:$packageName")))
+        }
 
         root.addView(TextView(this).apply { text = "Araç menüsündeki uygulamalar"; textSize = 14f; setPadding(0, 30, 0, 8) })
         val launch = packageManager.queryIntentActivities(

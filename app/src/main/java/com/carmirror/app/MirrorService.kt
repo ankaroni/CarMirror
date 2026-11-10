@@ -66,6 +66,7 @@ class MirrorService : Service() {
         val (w, h) = targetSize(MirrorHub.carW, MirrorHub.carH)
 
         val r = MirrorRenderer(w, h, Prefs(this).fill)
+        r.fps30 = Prefs(this).fps30
         val surface = r.start()
         MirrorHub.renderer = r
         vd = p.createVirtualDisplay("CarMirror", w, h, dpi,

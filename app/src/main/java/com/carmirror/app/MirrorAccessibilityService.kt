@@ -83,6 +83,7 @@ class MirrorAccessibilityService : AccessibilityService() {
 
     fun back() = performGlobalAction(GLOBAL_ACTION_BACK)
     fun home() = performGlobalAction(GLOBAL_ACTION_HOME)
+    fun recents() = performGlobalAction(GLOBAL_ACTION_RECENTS)
 
     /** 1x1 overlay that forces landscape and keeps the screen on. */
     fun setKeepLandscape(on: Boolean) {
@@ -99,8 +100,32 @@ class MirrorAccessibilityService : AccessibilityService() {
                         or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
                 PixelFormat.TRANSLUCENT)
             lp.screenOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE
+            val prefs = Prefs(this)
+            if (prefs.dim) lp.screenBrightness = maxOf(prefs.dimLevel / 100f, 0.003f)
             try { wm.addView(v, lp); overlay = v } catch (_: Exception) {}
         }
+        applyDim(on)
+    }
+
+    /** System-level dimming (needs WRITE_SETTINGS) on top of the window override; always restored. */
+    fun applyDim(on: Boolean) {
+        val prefs = Prefs(this)
+        try {
+            if (!android.provider.Settings.System.canWrite(this)) return
+            val cr = contentResolver
+            if (on && prefs.dim) {
+                if (prefs.savedBrightness < 0) {
+                    prefs.savedBrightness = android.provider.Settings.System.getInt(cr, android.provider.Settings.System.SCREEN_BRIGHTNESS, 128)
+                    prefs.savedMode = android.provider.Settings.System.getInt(cr, android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE, 0)
+                }
+                android.provider.Settings.System.putInt(cr, android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE, 0)
+                android.provider.Settings.System.putInt(cr, android.provider.Settings.System.SCREEN_BRIGHTNESS, (prefs.dimLevel * 2.55f).toInt().coerceAtLeast(1))
+            } else if (prefs.savedBrightness >= 0) {
+                android.provider.Settings.System.putInt(cr, android.provider.Settings.System.SCREEN_BRIGHTNESS, prefs.savedBrightness)
+                android.provider.Settings.System.putInt(cr, android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE, prefs.savedMode.coerceAtLeast(0))
+                prefs.savedBrightness = -1
+            }
+        } catch (_: Exception) {}
     }
 
     companion object {
