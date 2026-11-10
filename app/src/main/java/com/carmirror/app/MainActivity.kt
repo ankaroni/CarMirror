@@ -64,14 +64,16 @@ class MainActivity : Activity() {
         root.addView(sw); root.addView(fl)
         root.addView(Switch(this).apply { text = "Yansıtırken telefon ekranını karart (ısınmayı azaltır)"; isChecked = prefs.dim
             setPadding(24, 24, 24, 24); setOnCheckedChangeListener { _, c -> prefs.dim = c; if (MirrorHub.active) MirrorAccessibilityService.instance?.setKeepLandscape(true) } })
-        root.addView(TextView(this).apply { text = "Karartma parlaklığı: %" + prefs.dimLevel; setPadding(24, 8, 24, 0) }.also { lbl ->
-            root.addView(lbl)
-            root.addView(SeekBar(this).apply { max = 50; progress = prefs.dimLevel
-                setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                    override fun onProgressChanged(s: SeekBar?, p: Int, u: Boolean) { prefs.dimLevel = p; lbl.text = "Karartma parlaklığı: %$p" }
-                    override fun onStartTrackingTouch(s: SeekBar?) {}
-                    override fun onStopTrackingTouch(s: SeekBar?) { if (MirrorHub.active) MirrorAccessibilityService.instance?.setKeepLandscape(true) }
-                }) }) })
+        val lbl = TextView(this).apply { text = "Karartma parlaklığı: %" + prefs.dimLevel; setPadding(24, 8, 24, 0) }
+        root.addView(lbl)
+        root.addView(SeekBar(this).apply {
+            max = 50; progress = prefs.dimLevel
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(s: SeekBar?, p: Int, u: Boolean) { prefs.dimLevel = p; lbl.text = "Karartma parlaklığı: %$p" }
+                override fun onStartTrackingTouch(s: SeekBar?) {}
+                override fun onStopTrackingTouch(s: SeekBar?) { if (MirrorHub.active) MirrorAccessibilityService.instance?.setKeepLandscape(true) }
+            })
+        })
         root.addView(Switch(this).apply { text = "Isı tasarrufu: 30 fps"; isChecked = prefs.fps30
             setPadding(24, 24, 24, 24); setOnCheckedChangeListener { _, c -> prefs.fps30 = c; MirrorHub.renderer?.fps30 = c } })
         root.addView(Switch(this).apply { text = "Bağlanınca son kullanılan uygulamayı aç"; isChecked = prefs.openLast
