@@ -36,6 +36,12 @@ class CarMirrorSession : Session() {
             val s: Surface? = c.surface
             MirrorHub.setCarSurface(s, c.width, c.height)
         }
+        override fun onStableAreaChanged(r: android.graphics.Rect) {
+            android.util.Log.i("CarMirror", "stableArea $r")
+        }
+        override fun onVisibleAreaChanged(r: android.graphics.Rect) {
+            android.util.Log.i("CarMirror", "visibleArea $r")
+        }
         override fun onSurfaceDestroyed(c: SurfaceContainer) { MirrorHub.setCarSurface(null, 0, 0) }
         override fun onClick(x: Float, y: Float) {
             android.util.Log.i("CarMirror", "surface onClick $x,$y a11y=${MirrorAccessibilityService.instance != null} r=${MirrorHub.renderer != null}")

@@ -14,6 +14,7 @@ object MirrorHub {
 
     // Car surface state (kept so renderer can pick it up when it starts later)
     @Volatile var carSurface: Surface? = null
+    @Volatile var area: android.graphics.Rect? = null
     @Volatile var carW = 0
     @Volatile var carH = 0
 
@@ -27,6 +28,6 @@ object MirrorHub {
     fun setCarSurface(s: Surface?, w: Int, h: Int) {
         carSurface = s; carW = w; carH = h
         val r = renderer
-        if (s != null) { r?.setOutput(s, w, h); onCarSize?.invoke(w, h) } else r?.clearOutput()
+        if (s != null) { r?.setOutput(s, w, h); area?.let { r?.setArea(it.left, it.top, it.right, it.bottom) }; onCarSize?.invoke(w, h) } else r?.clearOutput()
     }
 }

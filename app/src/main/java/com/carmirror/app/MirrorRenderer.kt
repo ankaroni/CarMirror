@@ -38,6 +38,16 @@ class MirrorRenderer(vdW0: Int, vdH0: Int, @Volatile var fill: Boolean) {
     private val tm = FloatArray(16).also { Matrix.setIdentityM(it, 0) }
     @Volatile private var outW = 0
     @Volatile private var outH = 0
+    // usable (unobstructed) area inside the car surface, top-left origin
+    @Volatile private var ax = 0; @Volatile private var ay = 0
+    @Volatile private var aw = 0; @Volatile private var ah = 0
+
+    fun setArea(l: Int, t: Int, r: Int, b: Int) {
+        ax = l; ay = t; aw = r - l; ah = b - t
+        handler.post { render(false) }
+    }
+    private fun areaW() = if (aw > 0) aw else outW
+    private fun areaH() = if (ah > 0) ah else outH
     private var hasFrame = false
     @Volatile var fps30 = true
     private var lastDraw = 0L
@@ -106,14 +116,14 @@ class MirrorRenderer(vdW0: Int, vdH0: Int, @Volatile var fill: Boolean) {
     /** Fill only when it crops very little (<=6%); otherwise fit so no UI edge is ever cut off. */
     private fun useFill(): Boolean {
         if (!fill || outW == 0 || outH == 0) return false
-        val ac = outW.toFloat() / outH; val at = vdW.toFloat() / vdH
+        val ac = areaW().toFloat() / areaH(); val at = vdW.toFloat() / vdH
         val crop = if (ac < at) 1f - ac / at else 1f - at / ac
         return crop <= 0.06f
     }
 
     /** Fraction of the texture visible (fill) – shared with touch mapping. */
     private fun cropScale(): FloatArray {
-        val ac = outW.toFloat() / outH; val at = vdW.toFloat() / vdH
+        val ac = areaW().toFloat() / areaH(); val at = vdW.toFloat() / vdH
         return if (!useFill()) floatArrayOf(1f, 1f)
         else if (ac < at) floatArrayOf(ac / at, 1f) else floatArrayOf(1f, at / ac)
     }
@@ -121,15 +131,17 @@ class MirrorRenderer(vdW0: Int, vdH0: Int, @Volatile var fill: Boolean) {
     /** Map car-surface pixel to normalized (0..1, top-left) coordinate inside the virtual display. */
     fun carToVd(cx: Float, cy: Float): FloatArray? {
         if (outW == 0 || outH == 0) return null
-        var u = cx / outW; var v = cy / outH
+        val aW = areaW().toFloat(); val aH = areaH().toFloat()
+        val oX = if (aw > 0) ax.toFloat() else 0f; val oY = if (ah > 0) ay.toFloat() else 0f
+        var u = (cx - oX) / aW; var v = (cy - oY) / aH
         if (useFill()) {
             val s = cropScale()
             u = 0.5f + (u - 0.5f) * s[0]; v = 0.5f + (v - 0.5f) * s[1]
         } else {
-            val ac = outW.toFloat() / outH; val at = vdW.toFloat() / vdH
+            val ac = aW / aH; val at = vdW.toFloat() / vdH
             if (ac < at) { val f = ac / at; v = 0.5f + (v - 0.5f) / f } else { val f = at / ac; u = 0.5f + (u - 0.5f) / f }
         }
-        return floatArrayOf(u, v)
+        return floatArrayOf(u.coerceIn(0f, 1f), v.coerceIn(0f, 1f))
     }
 
     fun setOutput(s: Surface, w: Int, h: Int) {
@@ -169,12 +181,17 @@ class MirrorRenderer(vdW0: Int, vdH0: Int, @Volatile var fill: Boolean) {
             }
         }
         lastDraw = android.os.SystemClock.uptimeMillis()
+        GLES20.glViewport(0, 0, outW, outH)
         GLES20.glClearColor(0f, 0f, 0f, 1f); GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
-        val ac = outW.toFloat() / outH; val at = vdW.toFloat() / vdH
+        val aW = areaW(); val aH = areaH()
+        val oX = if (aw > 0) ax else 0; val oY = if (ah > 0) ay else 0
+        val ac = aW.toFloat() / aH; val at = vdW.toFloat() / vdH
+        var vx = oX; var vy = oY; var vw = aW; var vh = aH
         if (!useFill()) {
-            if (ac < at) { val h = (outW / at).toInt(); GLES20.glViewport(0, (outH - h) / 2, outW, h) }
-            else { val w = (outH * at).toInt(); GLES20.glViewport((outW - w) / 2, 0, w, outH) }
-        } else GLES20.glViewport(0, 0, outW, outH)
+            if (ac < at) { vh = (aW / at).toInt(); vy = oY + (aH - vh) / 2 }
+            else { vw = (aH * at).toInt(); vx = oX + (aW - vw) / 2 }
+        }
+        GLES20.glViewport(vx, outH - (vy + vh), vw, vh)
         val s = cropScale()
         GLES20.glUseProgram(program)
         GLES20.glUniformMatrix4fv(GLES20.glGetUniformLocation(program, "uTex"), 1, false, tm, 0)
