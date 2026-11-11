@@ -9,6 +9,7 @@ object ProjectionRequester {
 
     fun request(ctx: Context) {
         if (MirrorHub.active) return
+        CmLog.i("request projection")
         A11yEnabler.ensure(ctx)
         MirrorHub.awaitingConsentUntil = System.currentTimeMillis() + 20_000
         val i = Intent(ctx, ProjectionRequestActivity::class.java)

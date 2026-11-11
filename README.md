@@ -62,6 +62,15 @@ adb forward tcp:5277 tcp:5277
 $ANDROID_HOME/extras/google/auto/desktop-head-unit
 ```
 
+## Araçta ilk kullanım (önemli)
+
+Android Auto, her bağlantıda kendi varsayılan navigasyon uygulamasını (genelde Google Haritalar) açar ve CarMirror'ı **kendisi açmaz**. CarMirror telefonda yansıtmayı otomatik başlatır, ama araç ekranında görünmesi için bir kez şunu yap:
+
+1. Araç ekranında başlatıcıyı (ızgara simgesi) aç, listenin sonundaki **CarMirror**'a dokun.
+2. Telefonda Android Auto → Ayarlar → **Başlatıcıyı özelleştir** bölümünden CarMirror'ı öne al ve kısayol çubuğuna sabitle.
+
+Sorun olursa telefonda CarMirror → "Günlüğü göster" bölümüne bak (bağlantı, oturum, yansıtma olayları saniyesiyle kayıtlıdır). Bilgisayara bağlıyken `adb shell run-as com.carmirror.app cat files/carmirror.log` ile de okunur.
+
 ## Bilinen sınırlamalar
 
 - **Apple CarPlay desteklenmez.** CarPlay, bağlanan cihazın Apple'ın MFi güvenlik çipini taşımasını ister. Android telefon bunu taklit edemez.

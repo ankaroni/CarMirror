@@ -262,7 +262,7 @@ class MirrorRenderer(vdW0: Int, vdH0: Int, @Volatile var fill: Boolean) {
             val apply = (nl == 0f && nr == 0f && (trimL > 0f || trimR > 0f)) || candHits >= 3
             if (apply && (Math.abs(trimL - candL) > 0.005f || Math.abs(trimR - candR) > 0.005f)) {
                 trimL = candL; trimR = candR
-                android.util.Log.i("CarMirror", "pillarbox trim L=$trimL R=$trimR")
+                CmLog.i("pillarbox trim L=$trimL R=$trimR")
             }
         } catch (e: Exception) {
             GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)

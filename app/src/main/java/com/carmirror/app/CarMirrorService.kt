@@ -15,7 +15,8 @@ import androidx.lifecycle.LifecycleOwner
 
 class CarMirrorService : CarAppService() {
     override fun createHostValidator(): HostValidator = HostValidator.ALLOW_ALL_HOSTS_VALIDATOR
-    override fun onCreateSession(): Session = CarMirrorSession()
+    override fun onCreateSession(): Session { CmLog.i("car: onCreateSession"); return CarMirrorSession() }
+    override fun onDestroy() { CmLog.i("car: service onDestroy"); super.onDestroy() }
 }
 
 class CarMirrorSession : Session() {
@@ -32,23 +33,23 @@ class CarMirrorSession : Session() {
 
     private val callback = object : SurfaceCallback {
         override fun onSurfaceAvailable(c: SurfaceContainer) {
-            android.util.Log.i("CarMirror", "surface available ${c.width}x${c.height}")
+            CmLog.i("surface available ${c.width}x${c.height}")
             val s: Surface? = c.surface
             MirrorHub.setCarSurface(s, c.width, c.height)
         }
         override fun onStableAreaChanged(r: android.graphics.Rect) {
-            android.util.Log.i("CarMirror", "stableArea $r")
+            CmLog.i("stableArea $r")
         }
         override fun onVisibleAreaChanged(r: android.graphics.Rect) {
-            android.util.Log.i("CarMirror", "visibleArea $r")
+            CmLog.i("visibleArea $r")
             // Use only the horizontal extent (side panels/media card); keep full height
             val a = android.graphics.Rect(r.left, 0, r.right, MirrorHub.carH)
             MirrorHub.area = a
             MirrorHub.renderer?.setArea(a.left, a.top, a.right, a.bottom)
         }
-        override fun onSurfaceDestroyed(c: SurfaceContainer) { MirrorHub.setCarSurface(null, 0, 0) }
+        override fun onSurfaceDestroyed(c: SurfaceContainer) { CmLog.i("car: surface destroyed"); MirrorHub.setCarSurface(null, 0, 0) }
         override fun onClick(x: Float, y: Float) {
-            android.util.Log.i("CarMirror", "surface onClick $x,$y a11y=${MirrorAccessibilityService.instance != null} r=${MirrorHub.renderer != null}")
+            CmLog.i("surface onClick $x,$y a11y=${MirrorAccessibilityService.instance != null} r=${MirrorHub.renderer != null}")
             val now = System.currentTimeMillis()
             val idle = now - lastTouch > 3500
             lastTouch = now
@@ -57,7 +58,7 @@ class CarMirrorSession : Session() {
             MirrorAccessibilityService.instance?.tapCar(x, y)
         }
         override fun onScroll(dx: Float, dy: Float) {
-            android.util.Log.i("CarMirror", "surface onScroll $dx,$dy")
+            CmLog.i("surface onScroll $dx,$dy")
             scrollX += dx; scrollY += dy
             main.removeCallbacks(flush); main.postDelayed(flush, 90)
         }
@@ -66,6 +67,7 @@ class CarMirrorSession : Session() {
     override fun onCreateScreen(intent: Intent): Screen {
         lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onCreate(owner: LifecycleOwner) {
+                CmLog.i("car: session onCreate active=${MirrorHub.active}")
                 connected = true
                 carContext.getCarService(AppManager::class.java).setSurfaceCallback(callback)
                 val pr = Prefs(carContext)
@@ -74,7 +76,7 @@ class CarMirrorSession : Session() {
                     ProjectionRequester.request(carContext.applicationContext)
                 else if (MirrorHub.active && pr.openLast) pr.lastApp?.let { AppLauncher.launch(carContext, it) }
             }
-            override fun onDestroy(owner: LifecycleOwner) { connected = false; MirrorHub.setCarSurface(null, 0, 0) }
+            override fun onDestroy(owner: LifecycleOwner) { CmLog.i("car: session onDestroy"); connected = false; MirrorHub.setCarSurface(null, 0, 0) }
         })
         return MenuScreen(carContext)
     }
@@ -126,6 +128,7 @@ class MenuScreen(ctx: CarContext) : Screen(ctx) {
     }
 
     private fun open(pkg: String) {
+        CmLog.i("menu: open $pkg active=${MirrorHub.active}")
         Prefs(carContext).lastApp = pkg
         if (MirrorHub.active) AppLauncher.launch(carContext, pkg)
         else { MirrorHub.pendingPkg = pkg; ProjectionRequester.request(carContext.applicationContext) }
@@ -136,7 +139,7 @@ class MenuScreen(ctx: CarContext) : Screen(ctx) {
 class MirrorScreen(ctx: CarContext) : Screen(ctx) {
     override fun onGetTemplate(): Template {
         fun act(res: Int, f: () -> Unit) = Action.Builder().setIcon(icon(carContext, res))
-            .setOnClickListener { android.util.Log.i("CarMirror", "action click"); f() }.build()
+            .setOnClickListener { CmLog.i("action click"); f() }.build()
         val strip = ActionStrip.Builder()
             .addAction(act(R.drawable.ic_menu) { screenManager.pop() })
             .addAction(act(R.drawable.ic_back) { MirrorAccessibilityService.instance?.back() })

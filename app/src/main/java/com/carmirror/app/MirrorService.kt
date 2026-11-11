@@ -36,6 +36,7 @@ class MirrorService : Service() {
         if (intent?.action == ACTION_STOP) { shutdown(false); return START_NOT_STICKY }
         val code = intent?.getIntExtra("code", 0) ?: 0
         val data = intent?.getParcelableExtra<Intent>("data")
+        CmLog.i("mirror: onStartCommand action=${intent?.action} code=${intent?.getIntExtra("code", 0)}")
         // Android 14: startForeground BEFORE getMediaProjection
         startForeground(1, notification("Yansıtma aktif"),
             ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
@@ -54,7 +55,7 @@ class MirrorService : Service() {
         projection = p
         p.registerCallback(object : MediaProjection.Callback() {
             override fun onStop() {
-                Log.i(TAG, "projection onStop")
+                CmLog.i("mirror: projection onStop (active=${MirrorHub.active})")
                 main.post { shutdown(true) }
             }
         }, main)
@@ -84,6 +85,7 @@ class MirrorService : Service() {
         MirrorHub.carSurface?.let { r.setOutput(it, MirrorHub.carW, MirrorHub.carH) }
 
         MirrorHub.active = true
+        CmLog.i("mirror: started ${w}x${h}")
         MirrorHub.awaitingConsentUntil = 0
         MirrorAccessibilityService.instance?.setKeepLandscape(true)
         MirrorHub.notifyChanged()
@@ -104,6 +106,7 @@ class MirrorService : Service() {
 
     private fun shutdown(restart: Boolean) {
         val wasActive = MirrorHub.active
+        CmLog.i("mirror: shutdown restart=$restart wasActive=$wasActive carConnected=${MirrorHub.carConnected} session=${CarMirrorSession.connected}")
         MirrorHub.active = false
         teardown()
         MirrorAccessibilityService.instance?.setKeepLandscape(false)

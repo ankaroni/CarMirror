@@ -27,7 +27,7 @@ class ConnectionService : Service() {
         if (observer == null) {
             val o = Observer<Int> { type ->
                 val connected = type == CarConnection.CONNECTION_TYPE_PROJECTION
-                android.util.Log.i("CarMirror", "car connection type=$type")
+                CmLog.i("car connection type=$type")
                 if (connected && !MirrorHub.carConnected) onConnected()
                 else if (!connected && MirrorHub.carConnected) onDisconnected()
             }
@@ -39,6 +39,8 @@ class ConnectionService : Service() {
 
     private fun onConnected() {
         MirrorHub.carConnected = true
+        main.removeCallbacks(stopRunnable)
+        CmLog.i("watch: car connected")
         val p = Prefs(this)
         if (p.openLast) p.lastApp?.let { MirrorHub.pendingPkg = it }
         if (p.autoStart && !MirrorHub.active) {
@@ -46,12 +48,21 @@ class ConnectionService : Service() {
         }
     }
 
-    private fun onDisconnected() {
-        MirrorHub.carConnected = false
-        if (MirrorHub.active) MirrorService.stop(this)
+    private val stopRunnable = Runnable {
+        if (!MirrorHub.carConnected && MirrorHub.active) { CmLog.i("watch: disconnect confirmed, stopping mirror"); MirrorService.stop(this) }
     }
 
+    private fun onDisconnected() {
+        MirrorHub.carConnected = false
+        CmLog.i("watch: car disconnected (waiting 20s before stopping)")
+        // Debounce: Android Auto briefly reports "not connected" while it restarts its projection.
+        main.removeCallbacks(stopRunnable); main.postDelayed(stopRunnable, 20_000)
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) { CmLog.i("watch: onTaskRemoved"); super.onTaskRemoved(rootIntent) }
+
     override fun onDestroy() {
+        CmLog.i("watch: onDestroy")
         observer?.let { o -> carConnection?.type?.removeObserver(o) }
         super.onDestroy()
     }

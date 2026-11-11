@@ -81,6 +81,11 @@ class MainActivity : Activity() {
             setPadding(24, 24, 24, 24); setOnCheckedChangeListener { _, c -> prefs.fps30 = c; MirrorHub.renderer?.fps30 = c } })
         root.addView(Switch(this).apply { text = "Bağlanınca son kullanılan uygulamayı aç"; isChecked = prefs.openLast
             setPadding(24, 24, 24, 24); setOnCheckedChangeListener { _, c -> prefs.openLast = c } })
+        val pm = getSystemService(android.os.PowerManager::class.java)
+        val batOk = pm.isIgnoringBatteryOptimizations(packageName)
+        row("Pil optimizasyonu: " + if (batOk) "SINIRSIZ" else "KISITLI (dokun → sınırsız yap)", batOk) {
+            if (!batOk) startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName")))
+        }
         val wsOk = android.provider.Settings.System.canWrite(this)
         row("Sistem ayarlarını değiştirme (tam karartma): " + if (wsOk) "AÇIK" else "KAPALI", wsOk) {
             startActivity(Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:$packageName")))
@@ -101,5 +106,12 @@ class MainActivity : Activity() {
                 }
             })
         }
+        root.addView(TextView(this).apply { text = "Tanılama günlüğü (araçta sorun olursa buna bak)"; textSize = 14f; setPadding(0, 30, 0, 8) })
+        val logView = TextView(this).apply { textSize = 10f; setTextIsSelectable(true); visibility = View.GONE; setPadding(24, 8, 24, 8) }
+        row("Günlüğü göster / gizle", true) {
+            if (logView.visibility == View.GONE) { logView.text = CmLog.tail(80).ifEmpty { "(boş)" }; logView.visibility = View.VISIBLE }
+            else logView.visibility = View.GONE
+        }
+        root.addView(logView)
     }
 }

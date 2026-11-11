@@ -23,6 +23,7 @@ class ProjectionRequestActivity : Activity() {
     override fun onActivityResult(req: Int, res: Int, data: Intent?) {
         super.onActivityResult(req, res, data)
         MirrorHub.awaitingConsentUntil = 0
+        CmLog.i("projection consent result=$res")
         if (res == RESULT_OK && data != null) {
             startForegroundService(Intent(this, MirrorService::class.java)
                 .putExtra("code", res).putExtra("data", data))
