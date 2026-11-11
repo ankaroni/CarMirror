@@ -131,7 +131,6 @@ class MirrorScreen(ctx: CarContext) : Screen(ctx) {
             .addAction(act(R.drawable.ic_menu) { screenManager.pop() })
             .addAction(act(R.drawable.ic_back) { MirrorAccessibilityService.instance?.back() })
             .addAction(act(R.drawable.ic_home) { MirrorAccessibilityService.instance?.home() })
-            .addAction(act(R.drawable.ic_recents) { MirrorAccessibilityService.instance?.recents() })
             .build()
         val map = ActionStrip.Builder().addAction(Action.PAN).build()
         return NavigationTemplate.Builder().setActionStrip(strip).setMapActionStrip(map)

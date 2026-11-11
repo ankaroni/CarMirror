@@ -103,10 +103,18 @@ class MirrorRenderer(vdW0: Int, vdH0: Int, @Volatile var fill: Boolean) {
         }
     }
 
+    /** Fill only when it crops very little (<=6%); otherwise fit so no UI edge is ever cut off. */
+    private fun useFill(): Boolean {
+        if (!fill || outW == 0 || outH == 0) return false
+        val ac = outW.toFloat() / outH; val at = vdW.toFloat() / vdH
+        val crop = if (ac < at) 1f - ac / at else 1f - at / ac
+        return crop <= 0.06f
+    }
+
     /** Fraction of the texture visible (fill) – shared with touch mapping. */
     private fun cropScale(): FloatArray {
         val ac = outW.toFloat() / outH; val at = vdW.toFloat() / vdH
-        return if (!fill) floatArrayOf(1f, 1f)
+        return if (!useFill()) floatArrayOf(1f, 1f)
         else if (ac < at) floatArrayOf(ac / at, 1f) else floatArrayOf(1f, at / ac)
     }
 
@@ -114,7 +122,7 @@ class MirrorRenderer(vdW0: Int, vdH0: Int, @Volatile var fill: Boolean) {
     fun carToVd(cx: Float, cy: Float): FloatArray? {
         if (outW == 0 || outH == 0) return null
         var u = cx / outW; var v = cy / outH
-        if (fill) {
+        if (useFill()) {
             val s = cropScale()
             u = 0.5f + (u - 0.5f) * s[0]; v = 0.5f + (v - 0.5f) * s[1]
         } else {
@@ -163,7 +171,7 @@ class MirrorRenderer(vdW0: Int, vdH0: Int, @Volatile var fill: Boolean) {
         lastDraw = android.os.SystemClock.uptimeMillis()
         GLES20.glClearColor(0f, 0f, 0f, 1f); GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
         val ac = outW.toFloat() / outH; val at = vdW.toFloat() / vdH
-        if (!fill) {
+        if (!useFill()) {
             if (ac < at) { val h = (outW / at).toInt(); GLES20.glViewport(0, (outH - h) / 2, outW, h) }
             else { val w = (outH * at).toInt(); GLES20.glViewport((outW - w) / 2, 0, w, outH) }
         } else GLES20.glViewport(0, 0, outW, outH)
