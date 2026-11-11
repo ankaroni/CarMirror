@@ -68,6 +68,7 @@ class CarMirrorSession : Session() {
         lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onCreate(owner: LifecycleOwner) {
                 CmLog.i("car: session onCreate active=${MirrorHub.active}")
+                try { carContext.getSystemService(android.app.NotificationManager::class.java).cancel(4) } catch (_: Exception) {}
                 connected = true
                 carContext.getCarService(AppManager::class.java).setSurfaceCallback(callback)
                 val pr = Prefs(carContext)
