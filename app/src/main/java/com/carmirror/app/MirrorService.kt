@@ -114,7 +114,7 @@ class MirrorService : Service() {
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
         if (restart && wasActive && Prefs(this).autoStart && (CarMirrorSession.connected || MirrorHub.carConnected)) {
-            main.postDelayed({ ProjectionRequester.request(applicationContext) }, 800)
+            main.postDelayed({ ProjectionRequester.requestWithRetry(applicationContext) }, 800)
         }
     }
 

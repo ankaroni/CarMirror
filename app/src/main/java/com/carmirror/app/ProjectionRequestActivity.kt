@@ -11,6 +11,9 @@ import android.os.Bundle
 class ProjectionRequestActivity : Activity() {
     override fun onCreate(b: Bundle?) {
         super.onCreate(b)
+        // Phone may be dimmed/locked in the car: wake it so the consent dialog can be shown and auto-confirmed.
+        setShowWhenLocked(true); setTurnScreenOn(true)
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         val mpm = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
         val intent = if (Build.VERSION.SDK_INT >= 34)
             mpm.createScreenCaptureIntent(MediaProjectionConfig.createConfigForDefaultDisplay())

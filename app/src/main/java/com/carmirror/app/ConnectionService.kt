@@ -44,7 +44,7 @@ class ConnectionService : Service() {
         val p = Prefs(this)
         if (p.openLast) p.lastApp?.let { MirrorHub.pendingPkg = it }
         if (p.autoStart && !MirrorHub.active) {
-            main.postDelayed({ if (MirrorHub.carConnected) ProjectionRequester.request(applicationContext) }, 1500)
+            main.postDelayed({ if (MirrorHub.carConnected) ProjectionRequester.requestWithRetry(applicationContext) }, 1500)
         }
     }
 

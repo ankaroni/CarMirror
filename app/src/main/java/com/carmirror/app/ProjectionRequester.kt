@@ -6,6 +6,15 @@ import android.content.Intent
 
 object ProjectionRequester {
     private const val NID = 2
+    private val h = android.os.Handler(android.os.Looper.getMainLooper())
+
+    /** Keep asking (every 25s, max 8 times) while the car is connected and no mirroring is active. */
+    fun requestWithRetry(ctx: Context, attempt: Int = 0) {
+        if (MirrorHub.active || attempt >= 8) return
+        if (!MirrorHub.carConnected && !CarMirrorSession.connected) return
+        request(ctx)
+        h.postDelayed({ requestWithRetry(ctx, attempt + 1) }, 25_000)
+    }
 
     fun request(ctx: Context) {
         if (MirrorHub.active) return
