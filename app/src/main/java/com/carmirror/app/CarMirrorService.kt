@@ -65,6 +65,12 @@ class CarMirrorSession : Session() {
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        CmLog.i("car: onNewIntent action=${intent.action} data=${intent.dataString}")
+        // Navigation/launch requests simply bring the menu forward; never throw.
+        try { val sm = carContext.getCarService(ScreenManager::class.java); while (sm.stackSize > 1) sm.pop() } catch (_: Exception) {}
+    }
+
     override fun onCreateScreen(intent: Intent): Screen {
         lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onCreate(owner: LifecycleOwner) {
