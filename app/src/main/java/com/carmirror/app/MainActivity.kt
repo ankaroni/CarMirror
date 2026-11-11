@@ -24,6 +24,7 @@ class MainActivity : Activity() {
         MirrorHub.listeners.add(listener)
         // Self-enable accessibility if WRITE_SECURE_SETTINGS was granted via adb
         A11yEnabler.ensure(this)
+        ConnectionService.start(this)
     }
     override fun onResume() { super.onResume(); if (!MirrorHub.active) MirrorAccessibilityService.instance?.applyDim(false); build() }
     override fun onDestroy() { MirrorHub.listeners.remove(listener); super.onDestroy() }

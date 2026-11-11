@@ -8,6 +8,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 /** Process-wide shared state between service, car session and accessibility service. */
 object MirrorHub {
     @Volatile var active = false
+    @Volatile var carConnected = false
     @Volatile var renderer: MirrorRenderer? = null
     @Volatile var awaitingConsentUntil = 0L
     @Volatile var pendingPkg: String? = null
