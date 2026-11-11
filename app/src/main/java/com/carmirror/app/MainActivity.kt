@@ -59,7 +59,7 @@ class MainActivity : Activity() {
 
         val sw = Switch(this).apply { text = "Android Auto bağlanınca otomatik başlat"; isChecked = prefs.autoStart
             setPadding(24, 24, 24, 24); setOnCheckedChangeListener { _, c -> prefs.autoStart = c } }
-        val fl = Switch(this).apply { text = "Siyah kenarı azalt (en fazla %6 kırpar)"; isChecked = prefs.fill
+        val fl = Switch(this).apply { text = "Ekranı doldur (siyah kenar yok, kenarlardan en fazla %30 kırpar)"; isChecked = prefs.fill
             setPadding(24, 24, 24, 24); setOnCheckedChangeListener { _, c -> prefs.fill = c; MirrorHub.renderer?.fill = c; MirrorHub.renderer?.redraw() } }
         root.addView(sw); root.addView(fl)
         root.addView(Switch(this).apply { text = "Yansıtırken telefon ekranını karart (ısınmayı azaltır)"; isChecked = prefs.dim

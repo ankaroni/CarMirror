@@ -113,12 +113,12 @@ class MirrorRenderer(vdW0: Int, vdH0: Int, @Volatile var fill: Boolean) {
         }
     }
 
-    /** Fill only when it crops very little (<=6%); otherwise fit so no UI edge is ever cut off. */
+    /** Fill unless it would crop more than 30%; otherwise fit so no UI edge is ever cut off. */
     private fun useFill(): Boolean {
         if (!fill || outW == 0 || outH == 0) return false
         val ac = areaW().toFloat() / areaH(); val at = vdW.toFloat() / vdH
         val crop = if (ac < at) 1f - ac / at else 1f - at / ac
-        return crop <= 0.06f
+        return crop <= 0.30f
     }
 
     /** Fraction of the texture visible (fill) – shared with touch mapping. */

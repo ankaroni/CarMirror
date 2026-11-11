@@ -41,6 +41,10 @@ class CarMirrorSession : Session() {
         }
         override fun onVisibleAreaChanged(r: android.graphics.Rect) {
             android.util.Log.i("CarMirror", "visibleArea $r")
+            // Use only the horizontal extent (side panels/media card); keep full height
+            val a = android.graphics.Rect(r.left, 0, r.right, MirrorHub.carH)
+            MirrorHub.area = a
+            MirrorHub.renderer?.setArea(a.left, a.top, a.right, a.bottom)
         }
         override fun onSurfaceDestroyed(c: SurfaceContainer) { MirrorHub.setCarSurface(null, 0, 0) }
         override fun onClick(x: Float, y: Float) {

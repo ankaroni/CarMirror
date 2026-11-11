@@ -23,8 +23,9 @@ class MirrorService : Service() {
     /** Smallest capture size that still covers the car surface 1:1 (fill or fit), capped at native. */
     private fun targetSize(carW: Int, carH: Int): Pair<Int, Int> {
         val at = nativeW.toFloat() / nativeH
-        var h = if (carW > 0 && carH > 0) maxOf(carH.toFloat(), carW / at).toInt() else 1080
-        h = h.coerceIn(minOf(886, nativeH), nativeH)
+        // High quality: at least 1080 tall, more if the car screen is bigger; never above native
+        var h = maxOf(1080, if (carW > 0 && carH > 0) maxOf(carH, (carW / at).toInt()) else 1080)
+        h = h.coerceAtMost(nativeH)
         val w = (h * at).toInt()
         return (w and 1.inv()) to (h and 1.inv())
     }
