@@ -99,12 +99,33 @@ class MirrorAccessibilityService : AccessibilityService() {
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
                         or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
                 PixelFormat.TRANSLUCENT)
-            lp.screenOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
             val prefs = Prefs(this)
+            if (prefs.forceLandscape) lp.screenOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
             if (prefs.dim) lp.screenBrightness = maxOf(prefs.dimLevel / 100f, 0.003f)
             try { wm.addView(v, lp); overlay = v } catch (_: Exception) {}
         }
         applyDim(on)
+        applyRotation(on)
+    }
+
+    /** Soft landscape: lock system rotation to landscape. Portrait-only apps still render upright. */
+    fun applyRotation(on: Boolean) {
+        val prefs = Prefs(this)
+        try {
+            if (!android.provider.Settings.System.canWrite(this)) return
+            val cr = contentResolver
+            if (on) {
+                if (prefs.savedAccel < 0) {
+                    prefs.savedAccel = android.provider.Settings.System.getInt(cr, android.provider.Settings.System.ACCELEROMETER_ROTATION, 1)
+                    prefs.savedUserRot = android.provider.Settings.System.getInt(cr, android.provider.Settings.System.USER_ROTATION, 0)
+                }
+                android.provider.Settings.System.putInt(cr, android.provider.Settings.System.ACCELEROMETER_ROTATION, 1)
+            } else if (prefs.savedAccel >= 0) {
+                android.provider.Settings.System.putInt(cr, android.provider.Settings.System.USER_ROTATION, prefs.savedUserRot)
+                android.provider.Settings.System.putInt(cr, android.provider.Settings.System.ACCELEROMETER_ROTATION, prefs.savedAccel)
+                prefs.savedAccel = -1
+            }
+        } catch (_: Exception) {}
     }
 
     /** System-level dimming (needs WRITE_SETTINGS) on top of the window override; always restored. */
