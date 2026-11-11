@@ -55,6 +55,11 @@ class Prefs(private val ctx: Context) {
         get() = sp.getBoolean("forceLand", false)
         set(v) { sp.edit().putBoolean("forceLand", v).apply() }
 
+    /** Low-latency mode: capture at car resolution, no frame throttling, no vsync wait, short taps. */
+    var fastMode: Boolean
+        get() = sp.getBoolean("fast", false)
+        set(v) { sp.edit().putBoolean("fast", v).apply() }
+
     var savedAccel: Int
         get() = sp.getInt("savedAccel", -1)
         set(v) { sp.edit().putInt("savedAccel", v).apply() }

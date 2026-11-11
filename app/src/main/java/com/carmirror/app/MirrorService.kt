@@ -23,6 +23,10 @@ class MirrorService : Service() {
     /** Smallest capture size that still covers the car surface 1:1 (fill or fit), capped at native. */
     private fun targetSize(carW: Int, carH: Int): Pair<Int, Int> {
         val at = nativeW.toFloat() / nativeH
+        if (Prefs(this).fastMode) {
+            val fh = (if (carW > 0 && carH > 0) maxOf(carH, (carW / at).toInt()) else 720).coerceIn(720, nativeH)
+            return (((fh * at).toInt()) and 1.inv()) to (fh and 1.inv())
+        }
         // High quality: at least 1080 tall, more if the car screen is bigger; never above native
         var h = maxOf(1080, if (carW > 0 && carH > 0) maxOf(carH, (carW / at).toInt()) else 1080)
         h = h.coerceAtMost(nativeH)
@@ -69,6 +73,8 @@ class MirrorService : Service() {
 
         val r = MirrorRenderer(w, h, Prefs(this).fill)
         r.fps30 = Prefs(this).fps30
+        r.fast = Prefs(this).fastMode
+        if (r.fast) r.fps30 = false
         val surface = r.start()
         MirrorHub.renderer = r
         vd = p.createVirtualDisplay("CarMirror", w, h, dpi,

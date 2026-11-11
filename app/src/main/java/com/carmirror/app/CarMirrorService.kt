@@ -22,13 +22,11 @@ class CarMirrorService : CarAppService() {
 class CarMirrorSession : Session() {
     private val main = Handler(Looper.getMainLooper())
     private var scrollX = 0f; private var scrollY = 0f
+    private var dragging = false
     @Volatile private var lastTouch = 0L
-    private val flush = Runnable {
-        val svc = MirrorAccessibilityService.instance
-        val cx = MirrorHub.carW / 2f; val cy = MirrorHub.carH / 2f
-        svc?.swipeCar(cx, cy, (cx - scrollX).coerceIn(2f, MirrorHub.carW - 2f),
-            (cy - scrollY).coerceIn(2f, MirrorHub.carH - 2f), 160)
-        scrollX = 0f; scrollY = 0f
+    private val endDrag = Runnable {
+        MirrorAccessibilityService.instance?.dragEnd()
+        dragging = false; scrollX = 0f; scrollY = 0f
     }
 
     private val callback = object : SurfaceCallback {
@@ -58,9 +56,12 @@ class CarMirrorSession : Session() {
             MirrorAccessibilityService.instance?.tapCar(x, y)
         }
         override fun onScroll(dx: Float, dy: Float) {
-            CmLog.i("surface onScroll $dx,$dy")
+            val svc = MirrorAccessibilityService.instance ?: return
+            val cx = MirrorHub.carW / 2f; val cy = MirrorHub.carH / 2f
+            if (!dragging) { dragging = true; scrollX = 0f; scrollY = 0f; svc.dragStart(cx, cy) }
             scrollX += dx; scrollY += dy
-            main.removeCallbacks(flush); main.postDelayed(flush, 90)
+            svc.dragMove((cx - scrollX).coerceIn(2f, MirrorHub.carW - 2f), (cy - scrollY).coerceIn(2f, MirrorHub.carH - 2f))
+            main.removeCallbacks(endDrag); main.postDelayed(endDrag, 110)
         }
     }
 

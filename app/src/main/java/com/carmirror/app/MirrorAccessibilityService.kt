@@ -66,13 +66,65 @@ class MirrorAccessibilityService : AccessibilityService() {
 
     fun tapCar(cx: Float, cy: Float) {
         val p = carToPhone(cx, cy) ?: return
-        gesture(p[0], p[1], p[0], p[1], 40)
+        gesture(p[0], p[1], p[0], p[1], if (Prefs(this).fastMode) 20 else 40)
     }
 
     fun swipeCar(x1: Float, y1: Float, x2: Float, y2: Float, dur: Long) {
         val a = carToPhone(x1, y1) ?: return; val b = carToPhone(x2, y2) ?: return
         gesture(a[0], a[1], b[0], b[1], dur)
     }
+
+    // ---- continuous drag (scroll that follows the finger) ----
+    private var dragStroke: GestureDescription.StrokeDescription? = null
+    private var dragCur = FloatArray(2)
+    private var dragPending: FloatArray? = null
+    private var dragBusy = false
+    private var dragEnding = false
+    private var dragActive = false
+
+    fun dragStart(carX: Float, carY: Float) {
+        val p = carToPhone(carX, carY) ?: return
+        dragCur = p; dragStroke = null; dragPending = null; dragBusy = false; dragEnding = false; dragActive = true
+    }
+
+    fun dragMove(carX: Float, carY: Float) {
+        if (!dragActive) return
+        val t = carToPhone(carX, carY) ?: return
+        dragPending = t
+        if (!dragBusy) dragPump()
+    }
+
+    fun dragEnd() {
+        if (!dragActive) return
+        dragEnding = true
+        if (!dragBusy) dragPump()
+    }
+
+    private fun dragPump() {
+        val ending = dragEnding
+        val t = dragPending ?: if (ending) dragCur else return
+        dragPending = null
+        val path = Path().apply { moveTo(dragCur[0], dragCur[1]); lineTo(t[0] + if (t[0] == dragCur[0]) 0.5f else 0f, t[1]) }
+        val last = ending && dragPending == null
+        val prev = dragStroke
+        val stroke = try {
+            if (prev == null) GestureDescription.StrokeDescription(path, 0, 16, !last)
+            else prev.continueStroke(path, 0, 16, !last)
+        } catch (e: Exception) { CmLog.i("drag stroke error $e"); dragReset(); return }
+        dragStroke = stroke
+        dragBusy = true
+        val ok = dispatchGesture(GestureDescription.Builder().addStroke(stroke).build(),
+            object : GestureResultCallback() {
+                override fun onCompleted(d: GestureDescription?) {
+                    dragCur = t; dragBusy = false
+                    if (last) dragReset() else if (dragPending != null || dragEnding) dragPump()
+                }
+                override fun onCancelled(d: GestureDescription?) { dragReset() }
+            }, main)
+        if (!ok) dragReset()
+    }
+
+    private fun dragReset() { dragStroke = null; dragPending = null; dragBusy = false; dragEnding = false; dragActive = false }
 
     private fun gesture(x1: Float, y1: Float, x2: Float, y2: Float, dur: Long) {
         val path = Path().apply { moveTo(x1, y1); if (x1 != x2 || y1 != y2) lineTo(x2, y2) }

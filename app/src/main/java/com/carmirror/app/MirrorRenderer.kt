@@ -60,6 +60,7 @@ class MirrorRenderer(vdW0: Int, vdH0: Int, @Volatile var fill: Boolean) {
     private fun wFrac() = 1f - trimL - trimR
     private fun contentAspect() = vdW * wFrac() / vdH
     @Volatile var fps30 = false
+    @Volatile var fast = false
     private var lastDraw = 0L
     private val retry = Runnable { render(false) }
 
@@ -169,6 +170,8 @@ class MirrorRenderer(vdW0: Int, vdH0: Int, @Volatile var fill: Boolean) {
             releaseWin()
             outW = w; outH = h
             win = EGL14.eglCreateWindowSurface(dpy, cfg, s, intArrayOf(EGL14.EGL_NONE), 0)
+            EGL14.eglMakeCurrent(dpy, win, win, ctx)
+            EGL14.eglSwapInterval(dpy, if (fast) 0 else 1)
             render(false)
         }
     }
@@ -226,7 +229,7 @@ class MirrorRenderer(vdW0: Int, vdH0: Int, @Volatile var fill: Boolean) {
         GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, tex)
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
         EGL14.eglSwapBuffers(dpy, win)
-        if (newFrame && ++detectCount % 20 == 0) detectBars()
+        if (!fast && newFrame && ++detectCount % 20 == 0) detectBars()
     }
 
     /** Render the whole texture into a tiny FBO and look for pure-black pillarbars. */
