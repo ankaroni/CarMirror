@@ -49,6 +49,16 @@ class MirrorRenderer(vdW0: Int, vdH0: Int, @Volatile var fill: Boolean) {
     private fun areaW() = if (aw > 0) aw else outW
     private fun areaH() = if (ah > 0) ah else outH
     private var hasFrame = false
+    // Auto-trimmed black pillarbars (fraction of texture width removed on each side)
+    @Volatile private var trimL = 0f
+    @Volatile private var trimR = 0f
+    private var fbo = 0; private var fboTex = 0
+    private val DW = 256; private val DH = 48
+    private val pix = ByteBuffer.allocateDirect(DW * DH * 4)
+    private var detectCount = 0
+    private var candL = 0f; private var candR = 0f; private var candHits = 0
+    private fun wFrac() = 1f - trimL - trimR
+    private fun contentAspect() = vdW * wFrac() / vdH
     @Volatile var fps30 = true
     private var lastDraw = 0L
     private val retry = Runnable { render(false) }
@@ -87,6 +97,15 @@ class MirrorRenderer(vdW0: Int, vdH0: Int, @Volatile var fill: Boolean) {
         GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
         GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
         GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
+        val ft = IntArray(1); GLES20.glGenTextures(1, ft, 0); fboTex = ft[0]
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, fboTex)
+        GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, DW, DH, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, null)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
+        val fb = IntArray(1); GLES20.glGenFramebuffers(1, fb, 0); fbo = fb[0]
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fbo)
+        GLES20.glFramebufferTexture2D(GLES20.GL_FRAMEBUFFER, GLES20.GL_COLOR_ATTACHMENT0, GLES20.GL_TEXTURE_2D, fboTex, 0)
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
         st = SurfaceTexture(tex).apply {
             setDefaultBufferSize(vdW, vdH)
             setOnFrameAvailableListener({ render(true) }, handler)
@@ -116,14 +135,14 @@ class MirrorRenderer(vdW0: Int, vdH0: Int, @Volatile var fill: Boolean) {
     /** Fill unless it would crop more than 30%; otherwise fit so no UI edge is ever cut off. */
     private fun useFill(): Boolean {
         if (!fill || outW == 0 || outH == 0) return false
-        val ac = areaW().toFloat() / areaH(); val at = vdW.toFloat() / vdH
+        val ac = areaW().toFloat() / areaH(); val at = contentAspect()
         val crop = if (ac < at) 1f - ac / at else 1f - at / ac
         return crop <= 0.03f
     }
 
     /** Fraction of the texture visible (fill) – shared with touch mapping. */
     private fun cropScale(): FloatArray {
-        val ac = areaW().toFloat() / areaH(); val at = vdW.toFloat() / vdH
+        val ac = areaW().toFloat() / areaH(); val at = contentAspect()
         return if (!useFill()) floatArrayOf(1f, 1f)
         else if (ac < at) floatArrayOf(ac / at, 1f) else floatArrayOf(1f, at / ac)
     }
@@ -138,9 +157,10 @@ class MirrorRenderer(vdW0: Int, vdH0: Int, @Volatile var fill: Boolean) {
             val s = cropScale()
             u = 0.5f + (u - 0.5f) * s[0]; v = 0.5f + (v - 0.5f) * s[1]
         } else {
-            val ac = aW / aH; val at = vdW.toFloat() / vdH
+            val ac = aW / aH; val at = contentAspect()
             if (ac < at) { val f = ac / at; v = 0.5f + (v - 0.5f) / f } else { val f = at / ac; u = 0.5f + (u - 0.5f) / f }
         }
+        u = trimL + u.coerceIn(0f, 1f) * wFrac()
         return floatArrayOf(u.coerceIn(0f, 1f), v.coerceIn(0f, 1f))
     }
 
@@ -185,7 +205,7 @@ class MirrorRenderer(vdW0: Int, vdH0: Int, @Volatile var fill: Boolean) {
         GLES20.glClearColor(0f, 0f, 0f, 1f); GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
         val aW = areaW(); val aH = areaH()
         val oX = if (aw > 0) ax else 0; val oY = if (ah > 0) ay else 0
-        val ac = aW.toFloat() / aH; val at = vdW.toFloat() / vdH
+        val ac = aW.toFloat() / aH; val at = contentAspect()
         var vx = oX; var vy = oY; var vw = aW; var vh = aH
         if (!useFill()) {
             if (ac < at) { vh = (aW / at).toInt(); vy = oY + (aH - vh) / 2 }
@@ -195,8 +215,8 @@ class MirrorRenderer(vdW0: Int, vdH0: Int, @Volatile var fill: Boolean) {
         val s = cropScale()
         GLES20.glUseProgram(program)
         GLES20.glUniformMatrix4fv(GLES20.glGetUniformLocation(program, "uTex"), 1, false, tm, 0)
-        GLES20.glUniform2f(GLES20.glGetUniformLocation(program, "uScale"), s[0], s[1])
-        GLES20.glUniform2f(GLES20.glGetUniformLocation(program, "uOff"), (1 - s[0]) / 2, (1 - s[1]) / 2)
+        GLES20.glUniform2f(GLES20.glGetUniformLocation(program, "uScale"), s[0] * wFrac(), s[1])
+        GLES20.glUniform2f(GLES20.glGetUniformLocation(program, "uOff"), trimL + (1 - s[0]) / 2 * wFrac(), (1 - s[1]) / 2)
         val ap = GLES20.glGetAttribLocation(program, "aPos"); val at2 = GLES20.glGetAttribLocation(program, "aTex")
         quadBuf.position(0); GLES20.glVertexAttribPointer(ap, 2, GLES20.GL_FLOAT, false, 16, quadBuf)
         GLES20.glEnableVertexAttribArray(ap)
@@ -206,6 +226,47 @@ class MirrorRenderer(vdW0: Int, vdH0: Int, @Volatile var fill: Boolean) {
         GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, tex)
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
         EGL14.eglSwapBuffers(dpy, win)
+        if (newFrame && ++detectCount % 20 == 0) detectBars()
+    }
+
+    /** Render the whole texture into a tiny FBO and look for pure-black pillarbars. */
+    private fun detectBars() {
+        try {
+            GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fbo)
+            GLES20.glViewport(0, 0, DW, DH)
+            GLES20.glUseProgram(program)
+            GLES20.glUniformMatrix4fv(GLES20.glGetUniformLocation(program, "uTex"), 1, false, tm, 0)
+            GLES20.glUniform2f(GLES20.glGetUniformLocation(program, "uScale"), 1f, 1f)
+            GLES20.glUniform2f(GLES20.glGetUniformLocation(program, "uOff"), 0f, 0f)
+            val ap = GLES20.glGetAttribLocation(program, "aPos"); val at2 = GLES20.glGetAttribLocation(program, "aTex")
+            quadBuf.position(0); GLES20.glVertexAttribPointer(ap, 2, GLES20.GL_FLOAT, false, 16, quadBuf); GLES20.glEnableVertexAttribArray(ap)
+            quadBuf.position(2); GLES20.glVertexAttribPointer(at2, 2, GLES20.GL_FLOAT, false, 16, quadBuf); GLES20.glEnableVertexAttribArray(at2)
+            GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
+            GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, tex)
+            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
+            pix.position(0)
+            GLES20.glReadPixels(0, 0, DW, DH, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, pix)
+            GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
+            val colMax = IntArray(DW)
+            for (y in 0 until DH) for (x in 0 until DW) {
+                val i = (y * DW + x) * 4
+                val m = (pix.get(i).toInt() and 255) + (pix.get(i + 1).toInt() and 255) + (pix.get(i + 2).toInt() and 255)
+                if (m > colMax[x]) colMax[x] = m
+            }
+            var l = 0; while (l < DW / 3 && colMax[l] <= 9) l++
+            var r = 0; while (r < DW / 3 && colMax[DW - 1 - r] <= 9) r++
+            // leave a 1-column safety margin, ignore tiny bars
+            val nl = if (l >= 6) (l - 1).toFloat() / DW else 0f
+            val nr = if (r >= 6) (r - 1).toFloat() / DW else 0f
+            if (Math.abs(nl - candL) < 0.01f && Math.abs(nr - candR) < 0.01f) candHits++ else { candL = nl; candR = nr; candHits = 1 }
+            val apply = (nl == 0f && nr == 0f && (trimL > 0f || trimR > 0f)) || candHits >= 3
+            if (apply && (Math.abs(trimL - candL) > 0.005f || Math.abs(trimR - candR) > 0.005f)) {
+                trimL = candL; trimR = candR
+                android.util.Log.i("CarMirror", "pillarbox trim L=$trimL R=$trimR")
+            }
+        } catch (e: Exception) {
+            GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
+        }
     }
 
     fun release() {
