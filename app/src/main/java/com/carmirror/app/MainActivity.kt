@@ -77,7 +77,7 @@ class MainActivity : Activity() {
         })
         root.addView(Switch(this).apply { text = "Yatayı zorla (dikey uygulamalar yan yatabilir)"; isChecked = prefs.forceLandscape
             setPadding(24, 24, 24, 24); setOnCheckedChangeListener { _, c -> prefs.forceLandscape = c; if (MirrorHub.active) MirrorAccessibilityService.instance?.setKeepLandscape(true) } })
-        root.addView(Switch(this).apply { text = "Isı tasarrufu: 30 fps"; isChecked = prefs.fps30
+        root.addView(Switch(this).apply { text = "Isı tasarrufu: 30 fps (kapalıyken 60 fps)"; isChecked = prefs.fps30
             setPadding(24, 24, 24, 24); setOnCheckedChangeListener { _, c -> prefs.fps30 = c; MirrorHub.renderer?.fps30 = c } })
         root.addView(Switch(this).apply { text = "Bağlanınca son kullanılan uygulamayı aç"; isChecked = prefs.openLast
             setPadding(24, 24, 24, 24); setOnCheckedChangeListener { _, c -> prefs.openLast = c } })

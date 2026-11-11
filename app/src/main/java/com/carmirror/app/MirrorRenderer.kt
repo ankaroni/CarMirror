@@ -59,7 +59,7 @@ class MirrorRenderer(vdW0: Int, vdH0: Int, @Volatile var fill: Boolean) {
     private var candL = 0f; private var candR = 0f; private var candHits = 0
     private fun wFrac() = 1f - trimL - trimR
     private fun contentAspect() = vdW * wFrac() / vdH
-    @Volatile var fps30 = true
+    @Volatile var fps30 = false
     private var lastDraw = 0L
     private val retry = Runnable { render(false) }
 

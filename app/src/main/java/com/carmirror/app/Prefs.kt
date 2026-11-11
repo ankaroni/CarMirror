@@ -31,8 +31,8 @@ class Prefs(private val ctx: Context) {
         set(v) { sp.edit().putInt("dimLevel", v).apply() }
 
     var fps30: Boolean
-        get() = sp.getBoolean("fps30", true)
-        set(v) { sp.edit().putBoolean("fps30", v).apply() }
+        get() = sp.getBoolean("fps30b", false)
+        set(v) { sp.edit().putBoolean("fps30b", v).apply() }
 
     var openLast: Boolean
         get() = sp.getBoolean("openLast", false)
