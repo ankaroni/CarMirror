@@ -118,7 +118,7 @@ class MirrorRenderer(vdW0: Int, vdH0: Int, @Volatile var fill: Boolean) {
         if (!fill || outW == 0 || outH == 0) return false
         val ac = areaW().toFloat() / areaH(); val at = vdW.toFloat() / vdH
         val crop = if (ac < at) 1f - ac / at else 1f - at / ac
-        return crop <= 0.30f
+        return crop <= 0.03f
     }
 
     /** Fraction of the texture visible (fill) – shared with touch mapping. */

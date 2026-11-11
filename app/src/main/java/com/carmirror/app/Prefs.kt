@@ -14,8 +14,8 @@ class Prefs(private val ctx: Context) {
         set(v) { sp.edit().putString("apps", v.joinToString(",")).apply() }
 
     var fill: Boolean
-        get() = sp.getBoolean("fill", true)
-        set(v) { sp.edit().putBoolean("fill", v).apply() }
+        get() = sp.getBoolean("fill2", false)
+        set(v) { sp.edit().putBoolean("fill2", v).apply() }
 
     var autoStart: Boolean
         get() = sp.getBoolean("auto", true)

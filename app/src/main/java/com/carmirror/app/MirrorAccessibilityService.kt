@@ -99,7 +99,7 @@ class MirrorAccessibilityService : AccessibilityService() {
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
                         or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
                 PixelFormat.TRANSLUCENT)
-            lp.screenOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE
+            lp.screenOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
             val prefs = Prefs(this)
             if (prefs.dim) lp.screenBrightness = maxOf(prefs.dimLevel / 100f, 0.003f)
             try { wm.addView(v, lp); overlay = v } catch (_: Exception) {}
